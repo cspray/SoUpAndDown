@@ -53,7 +53,11 @@ function getStackApi() {
             var element = $(selector);
             $.get(url, apiData, function(data) {
                 var info = data.items[0];
-                var html = '<div style="color:green;">' + info.up_vote_count + '</div>';
+                var upVotes = 0;
+                if (info.up_vote_count > 0) {
+                    upVotes = '+' + info.up_vote_count;
+                }
+                var html = '<div style="color:green;">' + upVotes + '</div>';
                 html = html + '<div class="vote-count-separator"></div>';
                 var downVotes = 0;
                 if (info.down_vote_count > 0) {
