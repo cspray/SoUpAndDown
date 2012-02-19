@@ -34,61 +34,89 @@ function getPostInfo(post) {
 }
 
 function getStackApi() {
-    return {
-        getVoteCount: function(request) {
+
+    return new StackApi();
+
+    function StackApi() {
+        this.getVoteCount = function(request) {
+            request.apiUrl = this.getApiUrl(request);
+            request.apiFilter = this.getApiFilter(request);
+            this.queryForVoteCount(request);
+        };
+
+        this.getApiUrl = function(request) {
+            var apiUrl = "https://api.stackexchange.com/2.0/";
             if (request.type == "question") {
-                this.getQuestionVoteCount(request.host, request.id);
+                apiUrl = apiUrl + "questions/" + request.id;
             }
             if (request.type == "answer") {
-                this.getAnswerVoteCount(request.host, request.id);
+                apiUrl = apiUrl + "answers/" + request.id;
             }
-        },
-        getQuestionVoteCount: function(host, id) {
-            var url = "https://api.stackexchange.com/2.0/questions/" + id;
-            var apiData = {
-                site: host,
-                filter: "!awRehpC1pG2C(t"
-            };
-            var selector = "[data-questionid=" + id + "] .se-up-down";
-            var element = $(selector);
-            $.get(url, apiData, function(data) {
-                var info = data.items[0];
-                var upVotes = 0;
-                if (info.up_vote_count > 0) {
-                    upVotes = '+' + info.up_vote_count;
-                }
-                var html = '<div style="color:green;">' + upVotes + '</div>';
-                html = html + '<div class="vote-count-separator"></div>';
-                var downVotes = 0;
-                if (info.down_vote_count > 0) {
-                    downVotes = '-' + info.down_vote_count;
-                }
-                html = html + '<div style="color:maroon;">' + downVotes + '</div>';
-                element.html(html);
-                element.removeClass('se-up-down');
-            });
-        },
-        getAnswerVoteCount: function(host, id) {
-            var url = "https://api.stackexchange.com/2.0/answers/" + id;
-            var apiData = {
-                site: host,
-                filter: "!6Jzry)jfEAcuO"
-            };
-            var selector = "[data-answerid=" + id + "] .se-up-down";
-            var element = $(selector);
-            $.get(url, apiData, function(data) {
-                // note that there is currently a bug in the filter for this answer
-                // please see http://stackapps.com/questions/3147/answer-up-down-vote-count-not-being-returned-in-filter
-                console.log(data);
-//                var info = data.items[0];
-//                var html = '<div style="color:green;">' + info.up_vote_count + '</div>';
-//                html = html + '<div class="vote-count-separator"></div>';
-//                html = html + '<div style="color:maroon;">' + info.down_vote_count + '</div>';
-//                element.html(html);
-//                element.removeClass('se-up-down');
-            });
+            return apiUrl;
         }
-    };
+
+        this.getApiFilter = function(request) {
+            var apiFilter = '';
+            if (request.type == "question") {
+                apiFilter = "!awRehpC1pG2C(t";
+            }
+            if (request.type == "answer") {
+                apiFilter = "!6Jzry)jfEAcuO";
+            }
+            return apiFilter;
+        }
+
+        this.queryForVoteCount = function(request) {
+            var url = request.apiUrl;
+            var apiData = {
+                site: request.host,
+                filter: request.apiFilter,
+                pagesize: 1,
+                page: 1
+            };
+            var selector = "[data-" + request.type + "id=" + request.id + "] .se-up-down";
+            var element = $(selector);
+            var ajaxSettings = {
+                data: apiData,
+                error: function(jqHr, status, error) {
+                    console.log("Show better error message eventually");
+                },
+                success: function(data, status, jqHr) {
+                    if (data.items == undefined || data.items.length == 0) {
+                        console.log("Unexpected error encountered.");
+                        return;
+                    }
+                    var normalizeInfo = function(info) {
+                        var data = {};
+                        if (info.up_vote_count == undefined || info.up_vote_count == 0) {
+                            data.up = 0;
+                        } else {
+                            data.up = "+" + info.up_vote_count;
+                        }
+
+                        if (info.down_vote_count == undefined || info.down_vote_count == 0) {
+                            data.down = 0;
+                        } else {
+                            data.down = "-" + info.down_vote_count;
+                        }
+                        return data;
+                    };
+                    var getHtml = function(info) {
+                        var html = "";
+                        html = html + "<div style=\"color: green;\">" + info.up + "</div>";
+                        html = html + "<div class=\"vote-count-separator\"></div>";
+                        html = html + "<div style=\"color: maroon;\">" + info.down + "</div>";
+                        return html;
+                    }
+                    var info = normalizeInfo(data.items[0]);
+                    element.html(getHtml(info));
+                },
+                url: url
+            }
+            $.ajax(ajaxSettings);
+
+        }
+    }
 
 }
 
