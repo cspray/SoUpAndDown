@@ -1,4 +1,5 @@
 {
+    "manifest_version": 2,
     "name": "SE Up-Down",
     "version": "1.0.0",
     "description": "Opens the up/down vote count for Stack Exchange sites",
