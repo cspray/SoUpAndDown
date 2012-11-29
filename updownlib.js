@@ -1,28 +1,31 @@
 function SoUpDown(Api) {
 
     var StackApi = Api;
-
+    var that = this;
     var repLimit = 999;
-
     var extensionClass = "so-up-and-down";
-
     var userRepSelector = "#hlinks-user .reputation-score";
     var voteCountPostSelector = ".vote-count-post";
+    var questionClass = "question";
+    var answerClass = "answer";
 
-    // A data attribute storing the id value for the question or answer
     // We are using this attribute as answer posts do not have a normal id whereas questions do
     var questionIdAttribute = "data-questionid";
     var answerIdAttribute = "data-answerid";
 
-    var questionClass = "question";
-    var answerClass = "answer";
+    // Will return an integer with the user's reputation if logged in or 0 if not
+    var getUserRep = function() {
+        var repScore = $(userRepSelector).html();
+        if (repScore == null) {
+            repScore = 0;
+        } else {
+            repScore = parseInt(repScore.replace(/,/, ''));
+        }
+        return repScore;
+    };
 
-    var that = this;
-
-    // Will add the extension's class for identifying q/a vote counts to all
-    // questions and answers in a Stack Exchange site.
     this.addExtensionClassToVoteCount = function() {
-        if (that.getUserRep() <= repLimit) {
+        if (getUserRep() <= repLimit) {
             $(voteCountPostSelector).addClass(extensionClass);
         }
     };
@@ -34,33 +37,23 @@ function SoUpDown(Api) {
         StackApi.getVoteCount(postInfo, renderVoteCount);
     };
 
-    // Will return an integer with the user's reputation if logged in or 0 if not
-    this.getUserRep = function() {
-        var repScore = $(userRepSelector).html();
-        if (repScore == null) {
-            repScore = 0;
-        } else {
-            repScore = parseInt(repScore.replace(/,/, ''));
-        }
-        return repScore;
-    };
-
     // Returns an object with the 'type', 'id', and 'host' for the q/a to split count of
     function getPostInfo(post) {
-        var postClass = post.attr('class');
+        var postType = '';
         var postId = 0;
-        if (postClass == questionClass) {
+        if (post.hasClass(questionClass)) {
             postId = post.attr(questionIdAttribute);
+            postType = 'question';
         }
-        if (postClass == answerClass) {
+        if (post.hasClass(answerClass)) {
             postId = post.attr(answerIdAttribute);
+            postType = 'answer';
         }
-        postId = parseInt(postId);
-        var host = window.location.host
+
         return {
-            type: postClass,
-            id: postId,
-            host: host
+            type: postType,
+            id: parseInt(postId),
+            host: window.location.host
         };
     }
 
@@ -152,7 +145,8 @@ function StackApi() {
         var ajaxSettings = {
             data: apiData,
             error: function(jqHr, status, error) {
-                console.log("Show better error message eventually");
+                console.error("The call to the Stack Exchange API returned with an error response");
+                console.error(error);
             },
             success: function(data, status, jqHr) {
                 if (data.items == undefined || data.items.length == 0) {
